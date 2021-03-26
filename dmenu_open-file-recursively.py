@@ -53,13 +53,18 @@ def parse_args(args_in):
         dest='command', required=False, type=command_type, default='xdg-open %FILE')
     optional.add_argument('-o', '--dmenu-options', help='Options to pass to dmenu',
         dest='dmenu_options', required=False, type=str, default='')
+    optional.add_argument('-r', '--show-relative-paths',
+        help='Show relative paths instead of absolute paths', dest='show_relative_paths',
+        required=False, action='store_true')
     args = parser.parse_args(args_in)
 
     return args
 
 
-def get_files(search_dir, search_pattern):
+def get_files(search_dir, search_pattern, show_relative_paths):
     matches = sorted(pathlib.Path(search_dir).rglob(search_pattern))
+    if show_relative_paths:
+        matches = [file.relative_to(search_dir) for file in matches]
     files = [str(file) for file in matches]
     return files
 
@@ -79,16 +84,13 @@ def select_file(files, dmenu_options):
 
 
 def run_command(file, command):
-    if not os.path.isfile(file):
-        print('File "{}" not found!'.format(file))
-        sys.exit(1)
     process = subprocess.Popen(command.replace('%FILE', '"{}"'.format(file)), shell=True)
     process.communicate()
 
 
 def main(args_in):
     args = parse_args(args_in)
-    files = get_files(args.search_dir, args.search_pattern)
+    files = get_files(args.search_dir, args.search_pattern, args.show_relative_paths)
     selected_file = select_file(files, args.dmenu_options)
     run_command(os.path.join(args.search_dir, selected_file), args.command)
 
